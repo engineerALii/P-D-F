@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>محول الصور إلى PDF الاحترافي</title>
+    
+    <!-- === أيقونات التطبيق === -->
+    <link rel="icon" type="image/png" href="https://static.vecteezy.com/system/resources/previews/023/234/824/non_2x/pdf-icon-red-and-white-color-for-free-png.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://static.vecteezy.com/system/resources/previews/023/234/824/non_2x/pdf-icon-red-and-white-color-for-free-png.png">
+    <meta name="theme-color" content="#0f172a">
+
+    <!-- الخطوط والأيقونات -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- المكتبات -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- تمت إزالة SortableJS لمنع الأخطاء -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js" defer></script>
+
+    <!-- تهيئة Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD6MRZ7d7J1333erYoBrUGqocJNdGNjB7w",
+            authDomain: "neew-aec2b.firebaseapp.com",
+            databaseURL: "https://neew-aec2b-default-rtdb.firebaseio.com",
+            projectId: "neew-aec2b",
+            storageBucket: "neew-aec2b.firebasestorage.app",
+            messagingSenderId: "70112873200",
+            appId: "1:70112873200:web:b8ef2b3863be6f1bf39035"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.submitRatingToFirebase = (rating) => {
+            const ratingsRef = ref(db, 'ratings');
+            push(ratingsRef, { stars: rating, timestamp: Date.now() });
+        };
+
+        window.listenToRatings = (callback) => {
+            const ratingsRef = ref(db, 'ratings');
+            onValue(ratingsRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const values = Object.values(data);
+                    const total = values.reduce((acc, curr) => acc + curr.stars, 0);
+                    const avg = (total / values.length).toFixed(1);
+                    const count = values.length;
+                    callback(avg, count);
+                } else {
+                    callback(0, 0);
+                }
+            });
+        };
+    </script>
+
+    <!-- إعدادات Tailwind -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Tajawal', 'sans-serif'] },
+                    colors: { 
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 900: '#1e3a8a' } 
+                    },
+                    animation: { 
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'float': 'float 6s ease-in-out infinite'
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-20px)' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { 
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a);
+            background-attachment: fixed;
+            color: white;
+        }
+        
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .glass-button {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .glass-modal {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* IOS Switch Dark */
+        .ios-switch {
+            appearance: none; width: 42px; height: 24px;
+            background: rgba(255, 255, 255, 0.1); border-radius: 99px;
+            position: relative; cursor: pointer; transition: 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .ios-switch::after {
+            content: ''; position: absolute; top: 2px; left: 2px;
+            width: 18px; height: 18px; background: white; border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: 0.3s;
+        }
+        .ios-switch:checked { background: #3b82f6; border-color: #3b82f6; }
+        .ios-switch:checked::after { transform: translateX(18px); }
+
+        .loader {
+            width: 20px; height: 20px; border: 2px solid #FFF;
+            border-bottom-color: transparent; border-radius: 50%;
+            display: inline-block; animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        [x-cloak] { display: none !important; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+    </style>
+
+    <!-- منطق التطبيق -->
+    <script>
+        function app() {
+            return {
+                activeModal: null,
+                isDragging: false,
+                isLoading: false,
+                images: [],
+                settings: {
+                    pageSize: 'a4',
+                    orientation: 'p',
+                    margins: false,
+                    quality: 0.8,
+                    darkMode: true 
+                },
+                appRating: { average: 5.0, count: 0 },
+                userRating: 0,
+                hasRated: false,
+                notification: { show: false, message: '', type: 'success' },
+
+                initApp() {
+                    const savedSettings = localStorage.getItem('glassPdfSettings');
+                    if (savedSettings) this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
+                    
+                    this.settings.darkMode = true;
+                    
+                    const savedRated = localStorage.getItem('glassPdfHasRated');
+                    if (savedRated) this.hasRated = true;
+
+                    this.$watch('settings', (val) => {
+                        localStorage.setItem('glassPdfSettings', JSON.stringify(val));
+                    });
+
+                    if (window.listenToRatings) {
+                        window.listenToRatings((avg, count) => {
+                            this.appRating.average = avg;
+                            this.appRating.count = count;
+                        });
+                    }
+                    
+                    window.addEventListener('dragover', e => e.preventDefault());
+                    window.addEventListener('drop', e => e.preventDefault());
+                },
+
+                async handleFiles(files) {
+                    if (files.length === 0) return;
+                    let fileArray = Array.from(files).filter(file => file.type.match('image.*'));
+                    
+                    if (fileArray.length === 0) {
+                        this.showNotification('يرجى اختيار صور فقط', 'error');
+                        return;
+                    }
+
+                    // الترتيب التلقائي الذكي
+                    fileArray.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+                    const readFile = (file) => new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve({ id: Date.now() + Math.random().toString(), data: e.target.result });
+                        reader.readAsDataURL(file);
+                    });
+
+                    try {
+                        const newImages = await Promise.all(fileArray.map(readFile));
+                        this.images.push(...newImages);
+                        this.showNotification(`تم إضافة ${newImages.length} صور مرتبة`);
+                    } catch (e) {
+                        this.showNotification('حدث خطأ في القراءة', 'error');
+                    }
+                },
+
+                handleDrop(e) {
+                    this.isDragging = false;
+                    this.handleFiles(e.dataTransfer.files);
+                },
+
+                // تمت إزالة initSortable لمنع الأخطاء
+
+                moveImage(index, offset) {
+                    const newIndex = index + offset;
+                    if (newIndex >= 0 && newIndex < this.images.length) {
+                        // استخدام طريقة آمنة للتبديل تضمن تحديث Alpine
+                        const temp = this.images[index];
+                        this.images[index] = this.images[newIndex];
+                        this.images[newIndex] = temp;
+                    }
+                },
+
+                removeImage(index) {
+                    this.images.splice(index, 1);
+                },
+                
+                clearAll() {
+                    if(confirm('هل أنت متأكد من حذف جميع الصور؟')) {
+                        this.images = [];
+                    }
+                },
+
+                async generatePDF() {
+                    if (this.images.length === 0) return this.showNotification('الرجاء إضافة صور', 'error');
+                    
+                    this.isLoading = true;
+                    setTimeout(async () => {
+                        try {
+                            const { jsPDF } = window.jspdf;
+                            const pdf = new jsPDF({
+                                orientation: this.settings.orientation,
+                                unit: 'mm',
+                                format: this.settings.pageSize === 'fit' ? 'a4' : this.settings.pageSize
+                            });
+
+                            const pW = pdf.internal.pageSize.getWidth();
+                            const pH = pdf.internal.pageSize.getHeight();
+
+                            for (let i = 0; i < this.images.length; i++) {
+                                if (i > 0) pdf.addPage();
+                                const imgData = this.images[i].data;
+                                const props = pdf.getImageProperties(imgData);
+                                
+                                let w, h, x, y;
+                                if (this.settings.pageSize === 'fit') {
+                                    w = pW; h = pH; x = 0; y = 0;
+                                } else {
+                                    const margin = this.settings.margins ? 10 : 0;
+                                    const availW = pW - (margin*2);
+                                    const availH = pH - (margin*2);
+                                    const ratio = props.width / props.height;
+                                    w = availW; h = w / ratio;
+                                    if (h > availH) { h = availH; w = h * ratio; }
+                                    x = (pW - w)/2; y = (pH - h)/2;
+                                }
+                                pdf.addImage(imgData, 'JPEG', x, y, w, h, null, 'FAST');
+                            }
+                            
+                            pdf.save(`PDF-${Date.now()}.pdf`);
+                            this.showNotification('تم التحميل بنجاح');
+                            if (!this.hasRated) setTimeout(() => this.activeModal = 'rating', 1500);
+                        } catch (e) {
+                            console.error(e);
+                            this.showNotification('فشل التحويل', 'error');
+                        } finally {
+                            this.isLoading = false;
+                        }
+                    }, 500);
+                },
+
+                submitUserRating(stars) {
+                    this.userRating = stars;
+                    if (window.submitRatingToFirebase) {
+                        window.submitRatingToFirebase(stars);
+                        this.hasRated = true;
+                        localStorage.setItem('glassPdfHasRated', 'true');
+                        setTimeout(() => { this.activeModal = null; this.showNotification('شكراً للتقييم!'); }, 800);
+                    }
+                },
+
+                showNotification(msg, type = 'success') {
+                    this.notification = { show: true, message: msg, type };
+                    setTimeout(() => this.notification.show = false, 3000);
+                }
+            }
+        }
+    </script>
+</head>
+<body x-data="app()" x-init="initApp()" class="min-h-screen flex flex-col font-sans antialiased overflow-x-hidden">
+
+    <!-- الخلفية الزخرفية -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div class="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] animate-float"></div>
+        <div class="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[120px] animate-float" style="animation-delay: 3s"></div>
+    </div>
+
+    <!-- Navbar الزجاجي -->
+    <nav class="sticky top-0 z-30 w-full glass-panel border-b-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <!-- الشعار -->
+                <div class="flex items-center gap-4">
+                    <div class="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
+                        <i class="ph-bold ph-file-pdf text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl tracking-tight text-white">PDF Maker</h1>
+                        <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-400">
+                            <span class="bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <i class="ph-fill ph-star text-[10px]"></i>
+                                <span x-text="appRating.average"></span>
+                            </span>
+                            <span>نسخة احترافية</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- أزرار التحكم الزجاجية -->
+                <div class="flex items-center gap-3">
+                    <button @click="activeModal = 'settings'" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-gray-300 hover:text-white" title="الإعدادات">
+                        <i class="ph-bold ph-gear text-xl"></i>
+                    </button>
+                    <button @click="activeModal = 'about'" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-blue-400 hover:text-blue-300" title="حول">
+                        <i class="ph-bold ph-info text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="flex-1 relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- منطقة الرفع (Hero Section) الزجاجية -->
+        <div 
+            class="w-full glass-panel rounded-[2rem] p-8 md:p-14 border-2 border-dashed border-white/10 hover:border-blue-500/50 hover:bg-white/5 transition-all duration-300 group cursor-pointer text-center mb-10 relative overflow-hidden"
+            @dragover.prevent="isDragging = true"
+            @dragleave.prevent="isDragging = false"
+            @drop.prevent="handleDrop($event)"
+            @click="$refs.fileInput.click()"
+            :class="{'border-blue-500 bg-blue-500/10': isDragging}"
+        >
+            <input type="file" x-ref="fileInput" multiple accept="image/*" class="hidden" @change="handleFiles($event.target.files)">
+            
+            <!-- تأثيرات إضاءة -->
+            <div class="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+            <div class="relative z-10">
+                <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-tr from-blue-500/20 to-indigo-500/20 text-blue-400 mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-blue-500/10 border border-white/5">
+                    <i class="ph-duotone ph-cloud-arrow-up text-5xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold mb-3 text-white">اختر الصور للتحويل</h2>
+                <p class="text-gray-400 max-w-md mx-auto text-lg">اسحب الملفات هنا أو اضغط للاختيار من جهازك.</p>
+            </div>
+        </div>
+
+        <!-- شريط الأدوات (يظهر عند وجود صور) -->
+        <div x-show="images.length > 0" class="flex flex-wrap items-center justify-between gap-4 mb-6 animate-fade-in">
+            <h3 class="font-bold text-xl flex items-center gap-3 text-white">
+                <span class="p-1.5 rounded-lg bg-blue-500/20 text-blue-400"><i class="ph-fill ph-images"></i></span>
+                المعرض <span class="bg-white/10 px-2.5 py-0.5 rounded-full text-sm font-mono text-gray-300" x-text="images.length"></span>
+            </h3>
+            <div class="flex gap-2">
+                <button @click="clearAll()" class="glass-button px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl flex items-center gap-2">
+                    <i class="ph-bold ph-trash"></i> مسح الكل
+                </button>
+            </div>
+        </div>
+
+        <!-- شبكة الصور (Responsive Grid) -->
+        <!-- تمت إزالة المعرف ID الخاص بـ SortableJS -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 pb-32" x-show="images.length > 0">
+            <template x-for="(img, index) in images" :key="img.id">
+                <div class="glass-panel relative group aspect-[3/4] rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 animate-slide-up border-0 ring-1 ring-white/10 hover:ring-blue-500/50 flex flex-col">
+                    
+                    <!-- الصورة -->
+                    <div class="relative flex-1 overflow-hidden">
+                        <img :src="img.data" class="w-full h-full object-cover">
+                        <!-- رقم الترتيب -->
+                        <div class="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-md backdrop-blur-md font-mono z-10 border border-white/10 pointer-events-none" x-text="index + 1"></div>
+                    </div>
+
+                    <!-- شريط التحكم السفلي (حل عملي للنقل) -->
+                    <div class="h-12 bg-black/40 backdrop-blur-md border-t border-white/5 flex items-center justify-between px-2 z-20">
+                        <!-- زر يمين (السابق في RTL) -->
+                        <button 
+                            @click="moveImage(index, -1)" 
+                            class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-gray-300 disabled:opacity-20 transition"
+                            :disabled="index === 0"
+                        >
+                            <i class="ph-bold ph-caret-right"></i>
+                        </button>
+
+                        <!-- زر الحذف -->
+                        <button @click="removeImage(index)" class="w-8 h-8 rounded-full hover:bg-red-500/20 text-red-400 flex items-center justify-center transition">
+                            <i class="ph-bold ph-trash"></i>
+                        </button>
+
+                        <!-- زر يسار (التالي في RTL) -->
+                        <button 
+                            @click="moveImage(index, 1)" 
+                            class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-gray-300 disabled:opacity-20 transition"
+                            :disabled="index === images.length - 1"
+                        >
+                            <i class="ph-bold ph-caret-left"></i>
+                        </button>
+                    </div>
+
+                </div>
+            </template>
+        </div>
+
+        <!-- حالة فارغة -->
+        <div x-show="images.length === 0" class="text-center py-12 opacity-30">
+            <i class="ph-duotone ph-files text-7xl mb-4 text-white"></i>
+            <p class="text-gray-400">لا توجد صور مضافة حالياً</p>
+        </div>
+
+    </main>
+
+    <!-- الشريط السفلي العائم الزجاجي -->
+    <div class="fixed bottom-0 left-0 right-0 z-20 glass-panel border-t border-white/10 p-4 shadow-2xl" x-show="images.length > 0" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0">
+        <div class="max-w-7xl mx-auto flex justify-between items-center gap-6">
+            <div class="hidden md:flex flex-col">
+                <span class="text-base font-bold text-white">جاهز للتحويل</span>
+                <span class="text-xs text-gray-400" x-text="images.length + ' صور مختارة'"></span>
+            </div>
+            
+            <button 
+                @click="generatePDF()"
+                :disabled="isLoading"
+                class="flex-1 md:flex-none md:w-72 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
+            >
+                <span x-show="!isLoading" class="flex items-center gap-2 text-lg">
+                    <i class="ph-bold ph-download-simple"></i>
+                    تحويل وحفظ PDF
+                </span>
+                <span x-show="isLoading" class="loader"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- فوتر بسيط -->
+    <footer class="py-8 text-center" x-show="images.length === 0">
+        <a href="https://instagram.com/c4man" target="_blank" class="inline-flex items-center gap-3 px-5 py-2.5 rounded-full glass-panel hover:bg-white/10 transition text-sm text-gray-300 group border border-white/5">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Instagram-Gradient-Logo-PNG.png" class="w-5 h-5 opacity-80 group-hover:opacity-100 transition">
+            <span class="font-medium tracking-wide">Developed by @c4man</span>
+            <i class="ph-bold ph-arrow-left group-hover:-translate-x-1 transition-transform text-pink-500"></i>
+        </a>
+    </footer>
+
+    <!-- ================= MODALS الزجاجية ================= -->
+    <div x-show="activeModal" class="fixed inset-0 z-50 flex items-center justify-center px-4" x-cloak>
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" @click="activeModal = null"></div>
+        
+        <!-- نافذة الإعدادات -->
+        <div x-show="activeModal === 'settings'" class="glass-modal relative w-full max-w-md rounded-3xl p-6 animate-slide-up shadow-2xl">
+            <div class="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
+                <h2 class="text-xl font-bold flex items-center gap-3 text-white">
+                    <i class="ph-duotone ph-sliders text-blue-400 text-2xl"></i> إعدادات PDF
+                </h2>
+                <button @click="activeModal = null" class="w-8 h-8 rounded-full glass-button flex items-center justify-center text-gray-400 hover:text-white"><i class="ph-bold ph-x"></i></button>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="flex justify-between items-center p-4 glass-panel rounded-xl">
+                    <span class="text-gray-300">حجم الصفحة</span>
+                    <select x-model="settings.pageSize" class="bg-transparent font-bold text-blue-400 outline-none cursor-pointer">
+                        <option value="a4" class="bg-gray-800">A4 (قياسي)</option>
+                        <option value="letter" class="bg-gray-800">Letter</option>
+                        <option value="fit" class="bg-gray-800">حسب الصورة</option>
+                    </select>
+                </div>
+                <div class="flex justify-between items-center p-4 glass-panel rounded-xl">
+                    <span class="text-gray-300">هوامش بيضاء</span>
+                    <input type="checkbox" x-model="settings.margins" class="ios-switch">
+                </div>
+                 <div class="flex justify-between items-center p-4 glass-panel rounded-xl">
+                    <span class="text-gray-300">اتجاه الصفحة</span>
+                     <div class="flex bg-black/20 rounded-lg p-1">
+                        <button @click="settings.orientation = 'p'" :class="settings.orientation === 'p' ? 'bg-white/10 text-white shadow' : 'text-gray-500'" class="px-4 py-1.5 rounded-md text-sm transition">طولي</button>
+                        <button @click="settings.orientation = 'l'" :class="settings.orientation === 'l' ? 'bg-white/10 text-white shadow' : 'text-gray-500'" class="px-4 py-1.5 rounded-md text-sm transition">عرضي</button>
+                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- نافذة حول -->
+        <div x-show="activeModal === 'about'" class="glass-modal relative w-full max-w-sm rounded-3xl p-8 text-center animate-slide-up shadow-2xl">
+            <button @click="activeModal = null" class="absolute top-4 left-4 w-8 h-8 rounded-full glass-button flex items-center justify-center text-gray-400 hover:text-white"><i class="ph-bold ph-x"></i></button>
+            
+            <div class="relative inline-block mb-6">
+                <div class="absolute inset-0 bg-blue-500/30 blur-xl rounded-full"></div>
+                <img src="https://static.vecteezy.com/system/resources/previews/023/234/824/non_2x/pdf-icon-red-and-white-color-for-free-png.png" class="relative w-24 h-24 mx-auto drop-shadow-2xl">
+            </div>
+            
+            <h2 class="text-2xl font-bold mb-2 text-white">Glass PDF Pro</h2>
+            <p class="text-sm text-gray-400 mb-8 leading-relaxed">أداة احترافية لتحويل الصور إلى PDF. خصوصية تامة، سرعة فائقة، وتصميم عصري.</p>
+            
+            <a href="https://instagram.com/c4man" target="_blank" class="flex items-center justify-center gap-4 p-4 rounded-2xl glass-panel hover:bg-white/10 transition border border-white/5 group">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Instagram-Gradient-Logo-PNG.png" class="w-10 h-10 group-hover:scale-110 transition-transform">
+                <div class="text-right">
+                    <div class="text-[10px] text-gray-400 uppercase tracking-widest">Developer</div>
+                    <div class="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500">@c4man</div>
+                </div>
+            </a>
+        </div>
+
+        <!-- نافذة التقييم -->
+        <div x-show="activeModal === 'rating'" class="glass-modal relative w-full max-w-sm rounded-3xl p-8 text-center animate-slide-up shadow-2xl">
+            <div class="text-5xl mb-4 animate-bounce">⭐</div>
+            <h3 class="text-2xl font-bold mb-2 text-white">رأيك يهمنا</h3>
+            <p class="text-sm text-gray-400 mb-8">كيف كانت تجربتك في التحويل؟</p>
+            <div class="flex justify-center gap-3 mb-8">
+                <template x-for="i in 5">
+                    <button @click="submitUserRating(i)" class="text-4xl transition hover:scale-110 hover:rotate-12 transform" :class="userRating >= i ? 'text-yellow-400' : 'text-gray-600'">★</button>
+                </template>
+            </div>
+            <button @click="activeModal = null" class="text-sm text-gray-500 hover:text-white transition">لاحقاً</button>
+        </div>
+    </div>
+
+    <!-- التنبيهات -->
+    <div x-show="notification.show" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-fade-in border border-white/10">
+        <i class="ph-fill ph-check-circle text-green-400" x-show="notification.type === 'success'"></i>
+        <i class="ph-fill ph-warning-circle text-red-400" x-show="notification.type === 'error'"></i>
+        <span x-text="notification.message" class="font-medium"></span>
+    </div>
+
+</body>
+</html>
