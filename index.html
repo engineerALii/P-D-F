@@ -317,22 +317,23 @@
         <div class="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[120px] animate-float" style="animation-delay: 3s"></div>
     </div>
 
-    <!-- Navbar الزجاجي -->
+    <!-- Navbar الزجاجي المتجاوب -->
     <nav class="sticky top-0 z-30 w-full glass-panel border-b-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-20">
+            <!-- استخدام py-4 بدلاً من h-20 ليناسب المحتوى -->
+            <div class="flex flex-wrap items-center justify-between py-4 gap-4">
                 <!-- الجزء الأيمن: الشعار + الاسم + أيقونات التواصل -->
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3 md:gap-4">
                     <!-- الشعار -->
-                    <div class="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
-                        <i class="ph-bold ph-file-pdf text-white text-2xl"></i>
+                    <div class="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 md:p-2.5 rounded-xl shadow-lg shadow-blue-500/20 shrink-0">
+                        <i class="ph-bold ph-file-pdf text-white text-xl md:text-2xl"></i>
                     </div>
                     
-                    <!-- الاسم والتواصل -->
-                    <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                    <!-- الاسم والتواصل (عمودي في الموبايل، أفقي في الديسكتوب) -->
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
                         <div>
-                            <h1 class="font-bold text-xl tracking-tight text-white leading-tight">PDF Maker</h1>
-                            <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-400">
+                            <h1 class="font-bold text-lg md:text-xl tracking-tight text-white leading-tight">PDF Maker</h1>
+                            <div class="flex items-center gap-1.5 text-[10px] md:text-[11px] font-medium text-gray-400">
                                 <span class="bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded flex items-center gap-1">
                                     <i class="ph-fill ph-star text-[10px]"></i>
                                     <span x-text="appRating.average"></span>
@@ -341,24 +342,24 @@
                         </div>
 
                         <!-- أيقونات التواصل الاجتماعي بجوار الاسم -->
-                        <div class="flex items-center gap-2 border-r border-white/10 pr-4 mr-2">
-                            <a href="https://instagram.com/c4man" target="_blank" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition hover:scale-110" title="Instagram">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Instagram-Gradient-Logo-PNG.png" class="w-5 h-5">
+                        <div class="flex items-center gap-2 sm:border-r sm:border-white/10 sm:pr-4 sm:mr-2">
+                            <a href="https://instagram.com/c4man" target="_blank" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition hover:scale-110" title="Instagram">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Instagram-Gradient-Logo-PNG.png" class="w-4 h-4 md:w-5 md:h-5">
                             </a>
-                            <a href="https://t.me/naajaf2" target="_blank" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition hover:scale-110" title="Telegram">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" class="w-5 h-5">
+                            <a href="https://t.me/naajaf2" target="_blank" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition hover:scale-110" title="Telegram">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" class="w-4 h-4 md:w-5 md:h-5">
                             </a>
                         </div>
                     </div>
                 </div>
 
                 <!-- أزرار التحكم الزجاجية -->
-                <div class="flex items-center gap-3">
-                    <button @click="activeModal = 'settings'" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-gray-300 hover:text-white" title="الإعدادات">
-                        <i class="ph-bold ph-gear text-xl"></i>
+                <div class="flex items-center gap-2 md:gap-3">
+                    <button @click="activeModal = 'settings'" class="glass-button w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-gray-300 hover:text-white" title="الإعدادات">
+                        <i class="ph-bold ph-gear text-lg md:text-xl"></i>
                     </button>
-                    <button @click="activeModal = 'about'" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-blue-400 hover:text-blue-300" title="حول">
-                        <i class="ph-bold ph-info text-xl"></i>
+                    <button @click="activeModal = 'about'" class="glass-button w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-blue-400 hover:text-blue-300" title="حول">
+                        <i class="ph-bold ph-info text-lg md:text-xl"></i>
                     </button>
                 </div>
             </div>
