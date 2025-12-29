@@ -152,10 +152,11 @@
         function app() {
             return {
                 activeModal: null,
-                previewImage: null, // لتخزين الصورة المراد عرضها
+                previewImage: null, 
                 isDragging: false,
                 isLoading: false,
                 images: [],
+                filename: 'PDF-Document', // اسم الملف الافتراضي
                 settings: {
                     pageSize: 'a4',
                     orientation: 'p',
@@ -206,7 +207,11 @@
 
                     const readFile = (file) => new Promise((resolve) => {
                         const reader = new FileReader();
-                        reader.onload = (e) => resolve({ id: Date.now() + Math.random().toString(), data: e.target.result });
+                        reader.onload = (e) => resolve({ 
+                            id: Date.now() + Math.random().toString(), 
+                            data: e.target.result,
+                            rotation: 0 
+                        });
                         reader.readAsDataURL(file);
                     });
 
@@ -236,11 +241,42 @@
                 removeImage(index) {
                     this.images.splice(index, 1);
                 },
+
+                rotateImage(index) {
+                    this.images[index].rotation = (this.images[index].rotation + 90) % 360;
+                },
                 
                 clearAll() {
                     if(confirm('هل أنت متأكد من حذف جميع الصور؟')) {
                         this.images = [];
                     }
+                },
+
+                rotateImageForPDF(base64Data, degrees) {
+                    return new Promise((resolve) => {
+                        if (degrees === 0) return resolve(base64Data);
+                        
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            if (degrees === 90 || degrees === 270) {
+                                canvas.width = img.height;
+                                canvas.height = img.width;
+                            } else {
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                            }
+                            
+                            ctx.translate(canvas.width / 2, canvas.height / 2);
+                            ctx.rotate(degrees * Math.PI / 180);
+                            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+                            
+                            resolve(canvas.toDataURL('image/jpeg', this.settings.quality));
+                        };
+                        img.src = base64Data;
+                    });
                 },
 
                 async generatePDF() {
@@ -261,8 +297,9 @@
 
                             for (let i = 0; i < this.images.length; i++) {
                                 if (i > 0) pdf.addPage();
-                                const imgData = this.images[i].data;
-                                const props = pdf.getImageProperties(imgData);
+                                
+                                const rotatedData = await this.rotateImageForPDF(this.images[i].data, this.images[i].rotation);
+                                const props = pdf.getImageProperties(rotatedData);
                                 
                                 let w, h, x, y;
                                 if (this.settings.pageSize === 'fit') {
@@ -276,10 +313,13 @@
                                     if (h > availH) { h = availH; w = h * ratio; }
                                     x = (pW - w)/2; y = (pH - h)/2;
                                 }
-                                pdf.addImage(imgData, 'JPEG', x, y, w, h, null, 'FAST');
+                                pdf.addImage(rotatedData, 'JPEG', x, y, w, h, null, 'FAST');
                             }
                             
-                            pdf.save(`PDF-${Date.now()}.pdf`);
+                            // استخدام اسم الملف المخصص
+                            const finalName = this.filename.trim() || `PDF-${Date.now()}`;
+                            pdf.save(`${finalName}.pdf`);
+                            
                             this.showNotification('تم التحميل بنجاح');
                             if (!this.hasRated) setTimeout(() => this.activeModal = 'rating', 1500);
                         } catch (e) {
@@ -317,58 +357,34 @@
         <div class="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[120px] animate-float" style="animation-delay: 3s"></div>
     </div>
 
-    <!-- Navbar الزجاجي المتجاوب -->
-    <nav class="sticky top-0 z-30 w-full glass-panel border-b-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <!-- استخدام py-4 بدلاً من h-20 ليناسب المحتوى -->
-            <div class="flex flex-wrap items-center justify-between py-4 gap-4">
-                <!-- الجزء الأيمن: الشعار + الاسم + أيقونات التواصل -->
-                <div class="flex items-center gap-3 md:gap-4">
-                    <!-- الشعار -->
-                    <div class="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 md:p-2.5 rounded-xl shadow-lg shadow-blue-500/20 shrink-0">
-                        <i class="ph-bold ph-file-pdf text-white text-xl md:text-2xl"></i>
-                    </div>
-                    
-                    <!-- الاسم والتواصل (عمودي في الموبايل، أفقي في الديسكتوب) -->
-                    <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                        <div>
-                            <h1 class="font-bold text-lg md:text-xl tracking-tight text-white leading-tight">PDF Maker</h1>
-                            <div class="flex items-center gap-1.5 text-[10px] md:text-[11px] font-medium text-gray-400">
-                                <span class="bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded flex items-center gap-1">
-                                    <i class="ph-fill ph-star text-[10px]"></i>
-                                    <span x-text="appRating.average"></span>
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- أيقونات التواصل الاجتماعي بجوار الاسم -->
-                        <div class="flex items-center gap-2 sm:border-r sm:border-white/10 sm:pr-4 sm:mr-2">
-                            <a href="https://instagram.com/c4man" target="_blank" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition hover:scale-110" title="Instagram">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Instagram-Gradient-Logo-PNG.png" class="w-4 h-4 md:w-5 md:h-5">
-                            </a>
-                            <a href="https://t.me/naajaf2" target="_blank" class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition hover:scale-110" title="Telegram">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" class="w-4 h-4 md:w-5 md:h-5">
-                            </a>
-                        </div>
-                    </div>
+    <!-- المحتوى الرئيسي -->
+    <main class="flex-1 relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
+        
+        <!-- هيدر داخلي بسيط -->
+        <div class="flex items-center justify-between mb-8 animate-fade-in">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2 rounded-xl shadow-lg shadow-blue-500/20">
+                    <i class="ph-bold ph-file-pdf text-white text-xl"></i>
                 </div>
-
-                <!-- أزرار التحكم الزجاجية -->
-                <div class="flex items-center gap-2 md:gap-3">
-                    <button @click="activeModal = 'settings'" class="glass-button w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-gray-300 hover:text-white" title="الإعدادات">
-                        <i class="ph-bold ph-gear text-lg md:text-xl"></i>
-                    </button>
-                    <button @click="activeModal = 'about'" class="glass-button w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-blue-400 hover:text-blue-300" title="حول">
-                        <i class="ph-bold ph-info text-lg md:text-xl"></i>
-                    </button>
+                <div>
+                    <h1 class="font-bold text-xl text-white">PDF Maker</h1>
+                    <div class="flex items-center gap-1 text-[10px] text-gray-400">
+                        <i class="ph-fill ph-star text-yellow-500"></i>
+                        <span x-text="appRating.average"></span>
+                    </div>
                 </div>
             </div>
+            
+            <div class="flex gap-2">
+                <button @click="activeModal = 'settings'" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-gray-300 hover:text-white" title="الإعدادات">
+                    <i class="ph-bold ph-gear text-xl"></i>
+                </button>
+                <button @click="activeModal = 'about'" class="glass-button w-10 h-10 rounded-full flex items-center justify-center text-blue-400 hover:text-blue-300" title="حول">
+                    <i class="ph-bold ph-info text-xl"></i>
+                </button>
+            </div>
         </div>
-    </nav>
 
-    <!-- المحتوى الرئيسي -->
-    <main class="flex-1 relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
         <!-- منطقة الرفع (Hero Section) الزجاجية -->
         <div 
             class="w-full glass-panel rounded-[2rem] p-8 md:p-14 border-2 border-dashed border-white/10 hover:border-blue-500/50 hover:bg-white/5 transition-all duration-300 group cursor-pointer text-center mb-10 relative overflow-hidden"
@@ -410,35 +426,44 @@
             <template x-for="(img, index) in images" :key="img.id">
                 <div class="glass-panel relative group aspect-[3/4] rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 animate-slide-up border-0 ring-1 ring-white/10 hover:ring-blue-500/50 flex flex-col">
                     
-                    <!-- الصورة (قابل للنقر للمعاينة) -->
-                    <div class="relative flex-1 overflow-hidden cursor-zoom-in" @click="previewImage = img.data" title="اضغط للتكبير">
-                        <img :src="img.data" class="w-full h-full object-cover">
+                    <!-- الصورة (بدون نقر للتكبير) -->
+                    <div class="relative flex-1 overflow-hidden">
+                        <!-- تم إضافة التحويل الدوراني للعرض -->
+                        <img :src="img.data" class="w-full h-full object-cover transition-transform duration-300" :style="`transform: rotate(${img.rotation}deg)`">
                         <!-- رقم الترتيب -->
                         <div class="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-md backdrop-blur-md font-mono z-10 border border-white/10 pointer-events-none" x-text="index + 1"></div>
-                        <!-- تأثير Hover -->
-                        <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                     </div>
 
                     <!-- شريط التحكم السفلي -->
                     <div class="h-12 bg-black/40 backdrop-blur-md border-t border-white/5 flex items-center justify-between px-2 z-20">
-                        <!-- زر يمين (السابق في RTL) -->
+                        <!-- زر يمين (نقل) -->
                         <button 
                             @click.stop="moveImage(index, -1)" 
-                            class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-gray-300 disabled:opacity-20 transition"
+                            class="w-7 h-7 rounded-full hover:bg-white/10 flex items-center justify-center text-gray-300 disabled:opacity-20 transition"
                             :disabled="index === 0"
                         >
                             <i class="ph-bold ph-caret-right"></i>
                         </button>
 
+                        <!-- زر التدوير -->
+                        <button @click.stop="rotateImage(index)" class="w-7 h-7 rounded-full hover:bg-blue-500/20 text-blue-400 flex items-center justify-center transition" title="تدوير">
+                            <i class="ph-bold ph-arrow-clockwise"></i>
+                        </button>
+
+                        <!-- زر تكبير (جديد) -->
+                        <button @click.stop="previewImage = img.data" class="w-7 h-7 rounded-full hover:bg-green-500/20 text-green-400 flex items-center justify-center transition" title="تكبير">
+                            <i class="ph-bold ph-arrows-out-simple"></i>
+                        </button>
+
                         <!-- زر الحذف -->
-                        <button @click.stop="removeImage(index)" class="w-8 h-8 rounded-full hover:bg-red-500/20 text-red-400 flex items-center justify-center transition">
+                        <button @click.stop="removeImage(index)" class="w-7 h-7 rounded-full hover:bg-red-500/20 text-red-400 flex items-center justify-center transition" title="حذف">
                             <i class="ph-bold ph-trash"></i>
                         </button>
 
-                        <!-- زر يسار (التالي في RTL) -->
+                        <!-- زر يسار (نقل) -->
                         <button 
                             @click.stop="moveImage(index, 1)" 
-                            class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-gray-300 disabled:opacity-20 transition"
+                            class="w-7 h-7 rounded-full hover:bg-white/10 flex items-center justify-center text-gray-300 disabled:opacity-20 transition"
                             :disabled="index === images.length - 1"
                         >
                             <i class="ph-bold ph-caret-left"></i>
@@ -479,11 +504,19 @@
         </div>
     </div>
 
-    <!-- فوتر بسيط (يظهر عند فراغ القائمة) -->
-    <footer class="py-8 text-center" x-show="images.length === 0">
-        <div class="inline-flex items-center justify-center gap-2 opacity-50 text-xs text-gray-500">
-            <span>© 2024 Glass PDF Converter</span>
+    <!-- فوتر دائم مع الحقوق وروابط التواصل -->
+    <footer class="mt-auto py-8 text-center flex flex-col items-center gap-4 relative z-10">
+        <div class="flex items-center justify-center gap-3">
+            <!-- زر إنستغرام -->
+            <a href="https://instagram.com/c4man" target="_blank" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center hover:bg-white/10 transition hover:scale-110 border border-white/5" title="Instagram">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Instagram-Gradient-Logo-PNG.png" class="w-6 h-6">
+            </a>
+            <!-- زر تيليجرام -->
+            <a href="https://t.me/naajaf2" target="_blank" class="w-10 h-10 rounded-full glass-panel flex items-center justify-center hover:bg-white/10 transition hover:scale-110 border border-white/5" title="Telegram">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" class="w-6 h-6">
+            </a>
         </div>
+        <p class="text-xs text-gray-500 font-medium">Developed by @c4man • © 2024</p>
     </footer>
 
     <!-- ================= MODALS الزجاجية ================= -->
@@ -500,6 +533,12 @@
             </div>
             
             <div class="space-y-4">
+                <!-- حقل اسم الملف الجديد -->
+                <div class="flex flex-col gap-2 p-4 glass-panel rounded-xl">
+                    <span class="text-gray-300 text-sm font-bold">اسم الملف</span>
+                    <input type="text" x-model="filename" class="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-blue-500/50 transition text-right placeholder-gray-500" placeholder="اسم الملف">
+                </div>
+
                 <div class="flex justify-between items-center p-4 glass-panel rounded-xl">
                     <span class="text-gray-300">حجم الصفحة</span>
                     <select x-model="settings.pageSize" class="bg-transparent font-bold text-blue-400 outline-none cursor-pointer">
@@ -522,7 +561,7 @@
             </div>
         </div>
 
-        <!-- نافذة حول (تم إزالة الروابط منها) -->
+        <!-- نافذة حول -->
         <div x-show="activeModal === 'about'" class="glass-modal relative w-full max-w-sm rounded-3xl p-8 text-center animate-slide-up shadow-2xl">
             <button @click="activeModal = null" class="absolute top-4 left-4 w-8 h-8 rounded-full glass-button flex items-center justify-center text-gray-400 hover:text-white"><i class="ph-bold ph-x"></i></button>
             
@@ -551,7 +590,7 @@
         </div>
     </div>
 
-    <!-- نافذة معاينة الصورة (جديدة) -->
+    <!-- نافذة معاينة الصورة -->
     <div x-show="previewImage" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-cloak>
         <button @click="previewImage = null" class="absolute top-6 right-6 w-12 h-12 rounded-full glass-button flex items-center justify-center text-white hover:bg-white/20 z-50">
             <i class="ph-bold ph-x text-2xl"></i>
