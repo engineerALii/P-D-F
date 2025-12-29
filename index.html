@@ -17,7 +17,7 @@
     <!-- المكتبات -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- تمت إزالة SortableJS لمنع الأخطاء -->
+    <!-- Alpine.js -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js" defer></script>
 
     <!-- تهيئة Firebase -->
@@ -152,6 +152,7 @@
         function app() {
             return {
                 activeModal: null,
+                previewImage: null, // لتخزين الصورة المراد عرضها
                 isDragging: false,
                 isLoading: false,
                 images: [],
@@ -223,12 +224,9 @@
                     this.handleFiles(e.dataTransfer.files);
                 },
 
-                // تمت إزالة initSortable لمنع الأخطاء
-
                 moveImage(index, offset) {
                     const newIndex = index + offset;
                     if (newIndex >= 0 && newIndex < this.images.length) {
-                        // استخدام طريقة آمنة للتبديل تضمن تحديث Alpine
                         const temp = this.images[index];
                         this.images[index] = this.images[newIndex];
                         this.images[newIndex] = temp;
@@ -323,19 +321,33 @@
     <nav class="sticky top-0 z-30 w-full glass-panel border-b-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-20">
-                <!-- الشعار -->
+                <!-- الجزء الأيمن: الشعار + الاسم + أيقونات التواصل -->
                 <div class="flex items-center gap-4">
+                    <!-- الشعار -->
                     <div class="bg-gradient-to-tr from-blue-600 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
                         <i class="ph-bold ph-file-pdf text-white text-2xl"></i>
                     </div>
-                    <div>
-                        <h1 class="font-bold text-xl tracking-tight text-white">PDF Maker</h1>
-                        <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-400">
-                            <span class="bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded flex items-center gap-1">
-                                <i class="ph-fill ph-star text-[10px]"></i>
-                                <span x-text="appRating.average"></span>
-                            </span>
-                            <span>نسخة احترافية</span>
+                    
+                    <!-- الاسم والتواصل -->
+                    <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                        <div>
+                            <h1 class="font-bold text-xl tracking-tight text-white leading-tight">PDF Maker</h1>
+                            <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-400">
+                                <span class="bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                    <i class="ph-fill ph-star text-[10px]"></i>
+                                    <span x-text="appRating.average"></span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- أيقونات التواصل الاجتماعي بجوار الاسم -->
+                        <div class="flex items-center gap-2 border-r border-white/10 pr-4 mr-2">
+                            <a href="https://instagram.com/c4man" target="_blank" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition hover:scale-110" title="Instagram">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Instagram-Gradient-Logo-PNG.png" class="w-5 h-5">
+                            </a>
+                            <a href="https://t.me/naajaf2" target="_blank" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition hover:scale-110" title="Telegram">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" class="w-5 h-5">
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -393,23 +405,24 @@
         </div>
 
         <!-- شبكة الصور (Responsive Grid) -->
-        <!-- تمت إزالة المعرف ID الخاص بـ SortableJS -->
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 pb-32" x-show="images.length > 0">
             <template x-for="(img, index) in images" :key="img.id">
                 <div class="glass-panel relative group aspect-[3/4] rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 animate-slide-up border-0 ring-1 ring-white/10 hover:ring-blue-500/50 flex flex-col">
                     
-                    <!-- الصورة -->
-                    <div class="relative flex-1 overflow-hidden">
+                    <!-- الصورة (قابل للنقر للمعاينة) -->
+                    <div class="relative flex-1 overflow-hidden cursor-zoom-in" @click="previewImage = img.data" title="اضغط للتكبير">
                         <img :src="img.data" class="w-full h-full object-cover">
                         <!-- رقم الترتيب -->
                         <div class="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-md backdrop-blur-md font-mono z-10 border border-white/10 pointer-events-none" x-text="index + 1"></div>
+                        <!-- تأثير Hover -->
+                        <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                     </div>
 
-                    <!-- شريط التحكم السفلي (حل عملي للنقل) -->
+                    <!-- شريط التحكم السفلي -->
                     <div class="h-12 bg-black/40 backdrop-blur-md border-t border-white/5 flex items-center justify-between px-2 z-20">
                         <!-- زر يمين (السابق في RTL) -->
                         <button 
-                            @click="moveImage(index, -1)" 
+                            @click.stop="moveImage(index, -1)" 
                             class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-gray-300 disabled:opacity-20 transition"
                             :disabled="index === 0"
                         >
@@ -417,13 +430,13 @@
                         </button>
 
                         <!-- زر الحذف -->
-                        <button @click="removeImage(index)" class="w-8 h-8 rounded-full hover:bg-red-500/20 text-red-400 flex items-center justify-center transition">
+                        <button @click.stop="removeImage(index)" class="w-8 h-8 rounded-full hover:bg-red-500/20 text-red-400 flex items-center justify-center transition">
                             <i class="ph-bold ph-trash"></i>
                         </button>
 
                         <!-- زر يسار (التالي في RTL) -->
                         <button 
-                            @click="moveImage(index, 1)" 
+                            @click.stop="moveImage(index, 1)" 
                             class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-gray-300 disabled:opacity-20 transition"
                             :disabled="index === images.length - 1"
                         >
@@ -465,13 +478,11 @@
         </div>
     </div>
 
-    <!-- فوتر بسيط -->
+    <!-- فوتر بسيط (يظهر عند فراغ القائمة) -->
     <footer class="py-8 text-center" x-show="images.length === 0">
-        <a href="https://instagram.com/c4man" target="_blank" class="inline-flex items-center gap-3 px-5 py-2.5 rounded-full glass-panel hover:bg-white/10 transition text-sm text-gray-300 group border border-white/5">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Instagram-Gradient-Logo-PNG.png" class="w-5 h-5 opacity-80 group-hover:opacity-100 transition">
-            <span class="font-medium tracking-wide">Developed by @c4man</span>
-            <i class="ph-bold ph-arrow-left group-hover:-translate-x-1 transition-transform text-pink-500"></i>
-        </a>
+        <div class="inline-flex items-center justify-center gap-2 opacity-50 text-xs text-gray-500">
+            <span>© 2024 Glass PDF Converter</span>
+        </div>
     </footer>
 
     <!-- ================= MODALS الزجاجية ================= -->
@@ -510,7 +521,7 @@
             </div>
         </div>
 
-        <!-- نافذة حول -->
+        <!-- نافذة حول (تم إزالة الروابط منها) -->
         <div x-show="activeModal === 'about'" class="glass-modal relative w-full max-w-sm rounded-3xl p-8 text-center animate-slide-up shadow-2xl">
             <button @click="activeModal = null" class="absolute top-4 left-4 w-8 h-8 rounded-full glass-button flex items-center justify-center text-gray-400 hover:text-white"><i class="ph-bold ph-x"></i></button>
             
@@ -522,13 +533,7 @@
             <h2 class="text-2xl font-bold mb-2 text-white">Glass PDF Pro</h2>
             <p class="text-sm text-gray-400 mb-8 leading-relaxed">أداة احترافية لتحويل الصور إلى PDF. خصوصية تامة، سرعة فائقة، وتصميم عصري.</p>
             
-            <a href="https://instagram.com/c4man" target="_blank" class="flex items-center justify-center gap-4 p-4 rounded-2xl glass-panel hover:bg-white/10 transition border border-white/5 group">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Instagram-Gradient-Logo-PNG.png" class="w-10 h-10 group-hover:scale-110 transition-transform">
-                <div class="text-right">
-                    <div class="text-[10px] text-gray-400 uppercase tracking-widest">Developer</div>
-                    <div class="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500">@c4man</div>
-                </div>
-            </a>
+            <div class="text-xs text-gray-500">الإصدار 3.0</div>
         </div>
 
         <!-- نافذة التقييم -->
@@ -543,6 +548,14 @@
             </div>
             <button @click="activeModal = null" class="text-sm text-gray-500 hover:text-white transition">لاحقاً</button>
         </div>
+    </div>
+
+    <!-- نافذة معاينة الصورة (جديدة) -->
+    <div x-show="previewImage" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-cloak>
+        <button @click="previewImage = null" class="absolute top-6 right-6 w-12 h-12 rounded-full glass-button flex items-center justify-center text-white hover:bg-white/20 z-50">
+            <i class="ph-bold ph-x text-2xl"></i>
+        </button>
+        <img :src="previewImage" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain border border-white/10" @click.outside="previewImage = null">
     </div>
 
     <!-- التنبيهات -->
